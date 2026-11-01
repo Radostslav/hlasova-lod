@@ -15,7 +15,8 @@
 <style>
 :root{
   --bg:#E9E7F5; --surface:#FFFFFF; --text:#1C1945; --muted:#5B5884;
-  --accent:#C9741A; --line:#CFCBE6; --ok:#2C8A5F; --warn:#B23A48;
+  --accent:#C9741A; --on-accent:#1C1945; --line:#CFCBE6; --ok:#2C8A5F; --warn:#B23A48;
+  --scrim:rgba(28,25,69,.45);
   color-scheme: light;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
@@ -24,13 +25,15 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0D0C26; --surface:#1A1844; --text:#EDEBFF; --muted:#A09CD0;
-    --accent:#FFB547; --line:#2E2B66; --ok:#5FD39A; --warn:#FF7A88;
+    --accent:#FFB547; --on-accent:#1C1945; --line:#2E2B66; --ok:#5FD39A; --warn:#FF7A88;
+    --scrim:rgba(5,4,20,.65);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0D0C26; --surface:#1A1844; --text:#EDEBFF; --muted:#A09CD0;
-  --accent:#FFB547; --line:#2E2B66; --ok:#5FD39A; --warn:#FF7A88;
+  --accent:#FFB547; --on-accent:#1C1945; --line:#2E2B66; --ok:#5FD39A; --warn:#FF7A88;
+  --scrim:rgba(5,4,20,.65);
   color-scheme: dark;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
@@ -41,10 +44,12 @@ body{
   -webkit-user-select:none; user-select:none; touch-action:manipulation;
 }
 .wrap{height:100%; max-width:900px; margin:0 auto; padding:10px 12px; display:flex; flex-direction:column; gap:10px}
-header{display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+header{display:flex; align-items:center; justify-content:space-between; gap:12px}
 h1{font-size:1.35rem; margin:0; font-weight:700}
-.stats{display:flex; gap:16px; color:var(--muted)}
+.hright{display:flex; align-items:center; gap:14px}
+.stats{display:flex; gap:14px; color:var(--muted)}
 .stats b{color:var(--text); font-size:1.2rem; margin-left:4px}
+.gear{padding:8px 12px; font-size:1.1rem; line-height:1}
 .stage{position:relative; flex:1; min-height:0; border-radius:14px; overflow:hidden; background:#14123A; border:1px solid var(--line)}
 canvas{display:block; width:100%; height:100%; touch-action:none}
 .heard{
@@ -54,21 +59,23 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
   opacity:0; transition:opacity .25s;
 }
 .heard.show{opacity:1}
-.raw{position:absolute; left:10px; bottom:8px; right:10px; font-size:.85rem; color:#A09CD0; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.raw{position:absolute; left:10px; bottom:8px; right:30px; font-size:.85rem; color:#A09CD0; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .overlay{
   position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:14px; padding:20px; text-align:center; color:#EDEBFF; background:rgba(20,18,58,.86);
 }
 .overlay h2{font-size:clamp(1.5rem,6vw,2.4rem); margin:0}
 .overlay p{margin:0; max-width:44ch; line-height:1.5; color:#C9C6F0}
-.overlay[hidden]{display:none}
+.overlay[hidden], .sheet[hidden], [hidden]{display:none !important}
 .words{display:flex; gap:8px; flex-wrap:wrap; justify-content:center}
 .words span{border:1px solid #4A4690; border-radius:999px; padding:4px 12px}
+.ovbtns{display:flex; gap:10px; flex-wrap:wrap; justify-content:center}
 button{
   font:inherit; font-weight:600; cursor:pointer; border-radius:12px; border:1px solid var(--line);
   background:var(--surface); color:var(--text); padding:10px 18px; touch-action:manipulation;
 }
 button.primary{background:#FFB547; color:#1C1945; border-color:#FFB547; font-size:1.15rem; padding:14px 30px}
+button.ghost{background:transparent; color:#EDEBFF; border-color:#4A4690}
 button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
 .controls{display:flex; gap:12px; align-items:center; justify-content:space-between}
 .micbtn{display:flex; align-items:center; gap:10px; text-align:left; flex:1; min-width:0; padding:12px 14px; min-height:64px}
@@ -83,6 +90,24 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
 .pad .l{grid-column:1; grid-row:2}
 .pad .d{grid-column:2; grid-row:2}
 .pad .r{grid-column:3; grid-row:2}
+
+/* Nastavení */
+.sheet{position:fixed; inset:0; background:var(--scrim); display:flex; align-items:center; justify-content:center; padding:16px; padding-top:calc(16px + env(safe-area-inset-top,0px)); padding-bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:20}
+.panel{background:var(--surface); color:var(--text); border:1px solid var(--line); border-radius:18px; width:100%; max-width:440px; max-height:100%; overflow:auto; padding:20px; display:flex; flex-direction:column; gap:20px}
+.panel h2{margin:0; font-size:1.4rem}
+.field{display:flex; flex-direction:column; gap:8px}
+.field > .label{font-weight:600}
+.hint{color:var(--muted); font-size:.9rem; line-height:1.45; margin:0}
+.seg{display:flex; border:1px solid var(--line); border-radius:12px; overflow:hidden}
+.seg label{flex:1; position:relative}
+.seg input{position:absolute; opacity:0; inset:0; margin:0}
+.seg span{display:block; padding:11px 6px; text-align:center; cursor:pointer}
+.seg label + label span{border-left:1px solid var(--line)}
+.seg input:checked + span{background:var(--accent); color:var(--on-accent); font-weight:700}
+.seg input:focus-visible + span{outline:3px solid var(--accent); outline-offset:-3px}
+input[type=range]{width:100%; accent-color:var(--accent)}
+.row{display:flex; justify-content:space-between; color:var(--muted); font-size:.85rem}
+.panel .done{background:var(--accent); color:var(--on-accent); border-color:var(--accent); padding:14px; font-size:1.1rem}
 @media (prefers-reduced-motion: reduce){ .heard{transition:none} }
 </style>
 </head>
@@ -90,9 +115,12 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
 <div class="wrap">
   <header>
     <h1>Hlasová loď</h1>
-    <div class="stats">
-      <span>Body<b id="score">0</b></span>
-      <span>Životy<b id="lives">3</b></span>
+    <div class="hright">
+      <div class="stats">
+        <span>Body<b id="score">0</b></span>
+        <span>Životy<b id="lives">3</b></span>
+      </div>
+      <button class="gear" id="gearBtn" aria-label="Nastavení">⚙︎</button>
     </div>
   </header>
 
@@ -102,16 +130,19 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
     <div class="raw" id="raw"></div>
     <div class="overlay" id="overlay">
       <h2 id="ovTitle">Řiď loď hlasem</h2>
-      <p id="ovText">Sbírej zlaté hvězdy a vyhýbej se asteroidům. Loď letí směrem, který řekneš, dokud nedáš jiný povel.</p>
-      <div class="words"><span>doleva</span><span>doprava</span><span>nahoru</span><span>dolů</span><span>stop</span></div>
-      <button class="primary" id="startBtn">Spustit hru</button>
+      <p id="ovText"></p>
+      <div class="words" id="ovWords"></div>
+      <div class="ovbtns">
+        <button class="primary" id="startBtn">Spustit hru</button>
+        <button class="ghost" id="ovSettings">Nastavení</button>
+      </div>
       <p id="micNote" style="font-size:.9rem"></p>
     </div>
   </div>
 
   <div class="controls">
     <button class="micbtn" id="micBtn"><span class="dot" id="dot"></span><span id="micStatus">Mikrofon vypnutý</span></button>
-    <div class="pad" aria-label="Ovládání tlačítky">
+    <div class="pad" id="pad" aria-label="Ovládání tlačítky">
       <button class="u" data-dir="up" aria-label="Nahoru">▲</button>
       <button class="s" data-dir="stop" aria-label="Stop">stop</button>
       <button class="l" data-dir="left" aria-label="Doleva">◀</button>
@@ -121,15 +152,174 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
   </div>
 </div>
 
+<div class="sheet" id="sheet" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <h2 id="setTitle">Nastavení</h2>
+
+    <div class="field">
+      <span class="label">Ovládání</span>
+      <div class="seg">
+        <label><input type="radio" name="mode" value="voice"><span>Hlasem</span></label>
+        <label><input type="radio" name="mode" value="whistle"><span>Pískáním</span></label>
+      </div>
+      <p class="hint" id="modeHint"></p>
+    </div>
+
+    <div class="field">
+      <span class="label">Rychlost hry</span>
+      <div class="seg">
+        <label><input type="radio" name="speed" value="slow"><span>Pomalá</span></label>
+        <label><input type="radio" name="speed" value="normal"><span>Normální</span></label>
+        <label><input type="radio" name="speed" value="fast"><span>Rychlá</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label">Zvuky</span>
+      <div class="seg">
+        <label><input type="radio" name="sound" value="on"><span>Zapnuté</span></label>
+        <label><input type="radio" name="sound" value="off"><span>Vypnuté</span></label>
+      </div>
+      <p class="hint" id="soundHint"></p>
+    </div>
+
+    <div class="field" id="whistleFields">
+      <label class="label" for="sens">Citlivost na pískání</label>
+      <input type="range" id="sens" min="0" max="100" step="1">
+      <div class="row"><span>Jen hlasité pískání</span><span>I tiché pískání</span></div>
+      <p class="hint">Když loď reaguje na hluk v místnosti, citlivost snižte. Když nereaguje na pískání, zvyšte ji.</p>
+      <button id="resetRange">Vynulovat rozsah tónů</button>
+      <p class="hint">Hra si sama učí, jak vysoko a nízko pískáte. Vynulujte rozsah, když hraje někdo jiný.</p>
+    </div>
+
+    <button class="done" id="doneBtn">Hotovo</button>
+  </div>
+</div>
+
 <script>
 (function(){
   const $ = (id) => document.getElementById(id);
   const canvas = $('c'), ctx = canvas.getContext('2d'), stage = $('stage');
   const heardEl = $('heard'), rawEl = $('raw'), overlay = $('overlay');
-  const ovTitle = $('ovTitle'), ovText = $('ovText'), startBtn = $('startBtn'), micNote = $('micNote');
-  const dot = $('dot'), micStatus = $('micStatus'), micBtn = $('micBtn');
+  const ovTitle = $('ovTitle'), ovText = $('ovText'), ovWords = $('ovWords'), startBtn = $('startBtn'), micNote = $('micNote');
+  const dot = $('dot'), micStatus = $('micStatus'), micBtn = $('micBtn'), pad = $('pad');
   const scoreEl = $('score'), livesEl = $('lives');
+  const sheet = $('sheet');
+  const clamp = (v,a,b) => Math.min(Math.max(v,a),b);
+  const now = () => performance.now();
 
+  // ---------- Nastavení ----------
+  const KEY = 'hlasovaLod.settings';
+  const DEFAULTS = { mode:'voice', speed:'normal', sound:true, sens:50, lo:900, hi:2000 };
+  let settings = Object.assign({}, DEFAULTS);
+  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s) settings = Object.assign(settings, s); } catch(e){}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch(e){} }
+  const SPEED = { slow:.7, normal:1, fast:1.35 };
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  function renderIntro(){
+    if (settings.mode === 'voice'){
+      ovTitle.textContent = 'Řiď loď hlasem';
+      ovText.textContent = 'Sbírej zlaté hvězdy a vyhýbej se asteroidům. Loď letí směrem, který řekneš, dokud nedáš jiný povel.';
+      ovWords.innerHTML = '<span>vlevo</span><span>vpravo</span><span>nahoru</span><span>dolů</span><span>stop</span>';
+      micNote.textContent = !SR ? 'Tenhle prohlížeč neumí rozpoznávat řeč. Přepni v nastavení na pískání, nebo hraj šipkami.'
+        : isIOS ? 'Na iPhonu musí být zapnutá Siri. Když loď přestane reagovat, klepni na mikrofon dole.' : '';
+    } else {
+      ovTitle.textContent = 'Řiď loď pískáním';
+      ovText.textContent = 'Vysoký tón pošle loď nahoru, nízký dolů. Dokud pískáš, letí dopředu. Když přestaneš, pomalu couvá.';
+      ovWords.innerHTML = '<span>vysoko = nahoru</span><span>nízko = dolů</span><span>ticho = couvání</span>';
+      micNote.textContent = 'Pár vteřin si hra učí tvůj rozsah — zkus na začátku zapískat nejvýš a nejníž, jak umíš.';
+    }
+    pad.hidden = settings.mode !== 'voice';
+  }
+
+  function syncForm(){
+    document.querySelector(`input[name=mode][value=${settings.mode}]`).checked = true;
+    document.querySelector(`input[name=speed][value=${settings.speed}]`).checked = true;
+    document.querySelector(`input[name=sound][value=${settings.sound ? 'on' : 'off'}]`).checked = true;
+    $('sens').value = settings.sens;
+    $('whistleFields').hidden = settings.mode !== 'whistle';
+    $('modeHint').textContent = settings.mode === 'voice'
+      ? 'Povely vlevo, vpravo, nahoru, dolů a stop. Na iPhonu reaguje se zpožděním kolem vteřiny.'
+      : 'Reaguje okamžitě. Výška tónu určuje výšku lodi.';
+    $('soundHint').textContent = (settings.mode === 'voice' && isIOS)
+      ? 'Na iPhonu můžou zvuky občas přerušit rozpoznávání řeči. Když hlas přestane fungovat, zkus je vypnout.' : '';
+  }
+  sheet.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.name === 'mode') settings.mode = t.value;
+    if (t.name === 'speed') settings.speed = t.value;
+    if (t.name === 'sound') settings.sound = t.value === 'on';
+    if (t.id === 'sens') settings.sens = +t.value;
+    save(); syncForm(); renderIntro();
+  });
+  $('sens').addEventListener('input', (e) => { settings.sens = +e.target.value; save(); });
+  $('resetRange').addEventListener('click', () => {
+    settings.lo = DEFAULTS.lo; settings.hi = DEFAULTS.hi; save();
+    $('resetRange').textContent = 'Rozsah vynulován';
+    setTimeout(() => $('resetRange').textContent = 'Vynulovat rozsah tónů', 1500);
+  });
+
+  let wasRunning = false;
+  function openSettings(){
+    wasRunning = running;
+    if (running){ running = false; }
+    syncForm(); sheet.hidden = false;
+    $('doneBtn').focus();
+  }
+  function closeSettings(){
+    sheet.hidden = true;
+    ensureAudio();
+    if (wasRunning){ running = true; applyInput(); }
+    else if (ship) applyInput();
+    renderIntro();
+  }
+  $('gearBtn').addEventListener('click', openSettings);
+  $('ovSettings').addEventListener('click', openSettings);
+  $('doneBtn').addEventListener('click', closeSettings);
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSettings(); });
+
+  // ---------- Zvuky ----------
+  let actx = null, sfxUntil = 0;
+  function ensureAudio(){
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+    } catch(e){}
+  }
+  function tone(freq, dur, o = {}){
+    if (!settings.sound || !actx) return;
+    const t0 = actx.currentTime + (o.delay || 0);
+    const osc = actx.createOscillator(), g = actx.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(o.vol || .12, t0 + .01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(actx.destination);
+    osc.start(t0); osc.stop(t0 + dur + .02);
+    sfxUntil = Math.max(sfxUntil, now() + ((o.delay || 0) + dur) * 1000 + 150);
+  }
+  function noise(dur){
+    if (!settings.sound || !actx) return;
+    const len = Math.floor(actx.sampleRate * dur), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2);
+    const src = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
+    src.buffer = buf; f.type = 'lowpass'; f.frequency.value = 900; g.gain.value = .35;
+    src.connect(f).connect(g).connect(actx.destination); src.start();
+    sfxUntil = Math.max(sfxUntil, now() + dur*1000 + 150);
+  }
+  const sfx = {
+    star(){ tone(880, .1, {type:'triangle'}); tone(1320, .16, {type:'triangle', delay:.08}); },
+    hit(){ noise(.35); tone(180, .35, {type:'sawtooth', to:50, vol:.08}); },
+    start(){ tone(330, .18, {type:'triangle', to:660}); },
+    over(){ tone(440, .7, {type:'triangle', to:90, vol:.14}); }
+  };
+
+  // ---------- Plátno ----------
   let W = 0, H = 0;
   function resize(){
     const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -139,25 +329,23 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
     ctx.setTransform(DPR,0,0,DPR,0,0);
     if (ship){ ship.x = clamp(ship.x, 20, W-20); ship.y = clamp(ship.y, 20, H-20); }
   }
-  const clamp = (v,a,b) => Math.min(Math.max(v,a),b);
 
   // ---------- Hra ----------
   const DIRS = { left:[-1,0], right:[1,0], up:[0,-1], down:[0,1], stop:[0,0] };
   const LABELS = { left:'Doleva', right:'Doprava', up:'Nahoru', down:'Dolů', stop:'Stop' };
-  let ship = null, dir, asteroids = [], stars = [], bgStars, score, lives, running = false, invuln = 0, elapsed = 0, spawnT = 0, last = 0;
-
-  bgStars = Array.from({length:110}, () => ({ x:Math.random(), y:Math.random(), r:Math.random()*1.4+.3, s:Math.random()*.6+.2 }));
+  let ship = null, dir = 'stop', asteroids = [], stars = [], score = 0, lives = 3, running = false, invuln = 0, elapsed = 0, spawnT = 0, last = 0;
+  const bgStars = Array.from({length:110}, () => ({ x:Math.random(), y:Math.random(), r:Math.random()*1.4+.3, s:Math.random()*.6+.2 }));
 
   function reset(){
-    ship = { x:W/2, y:H/2, angle:-Math.PI/2 };
+    ship = { x: settings.mode === 'whistle' ? W*.25 : W/2, y:H/2, angle: settings.mode === 'whistle' ? 0 : -Math.PI/2, thrust:false };
     dir = 'stop'; asteroids = []; stars = []; score = 0; lives = 3; invuln = 1.5; elapsed = 0; spawnT = 1;
     scoreEl.textContent = 0; livesEl.textContent = 3;
     spawnStar();
   }
   function spawnStar(){ stars.push({ x: 40 + Math.random()*(W-80), y: 60 + Math.random()*(H-100), t: 0 }); }
   function spawnAsteroid(){
-    const scale = Math.min(W,H)/500;
-    const speed = (35 + Math.min(elapsed*1.0, 60) + Math.random()*20) * Math.max(scale,.7);
+    const scale = Math.min(W,H)/500, f = SPEED[settings.speed];
+    const speed = (22 + Math.min(elapsed*0.5, 35) + Math.random()*12) * Math.max(scale,.7) * f;
     const side = Math.floor(Math.random()*4);
     const r = (12 + Math.random()*16) * Math.max(scale,.8);
     let x, y;
@@ -181,28 +369,117 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
     heardT = setTimeout(() => heardEl.classList.remove('show'), 900);
   }
 
+  // ---------- Pískání: detekce výšky tónu ----------
+  let stream = null, micSrc = null, analyser = null, freqData = null;
+  let pitchLog = null, lastWhistle = -1e9, stableCount = 0, targetY = null;
+
+  async function startWhistle(){
+    ensureAudio();
+    if (stream && analyser){ setMic('on', 'Poslouchám pískání'); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ setMic('err', 'Mikrofon tady nejde použít'); return; }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } });
+      micSrc = actx.createMediaStreamSource(stream);
+      analyser = actx.createAnalyser();
+      analyser.fftSize = 2048; analyser.smoothingTimeConstant = .2;
+      micSrc.connect(analyser);
+      freqData = new Float32Array(analyser.frequencyBinCount);
+      setMic('on', 'Poslouchám pískání — klepnutím restartuješ');
+      rawEl.textContent = 'Zapískej…';
+    } catch(e){
+      stream = null; analyser = null;
+      setMic('err', 'Mikrofon není povolený — klepni sem');
+      rawEl.textContent = 'Chyba: ' + e.name;
+    }
+  }
+  function stopWhistle(){
+    if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+    if (micSrc){ try { micSrc.disconnect(); } catch(e){} micSrc = null; }
+    analyser = null;
+  }
+  function detectPitch(){
+    if (!analyser || now() < sfxUntil) return null;
+    analyser.getFloatFrequencyData(freqData);
+    const binHz = actx.sampleRate / analyser.fftSize;
+    const lo = Math.floor(450 / binHz), hi = Math.min(Math.ceil(4200 / binHz), freqData.length - 2);
+    let max = -Infinity, idx = -1, sum = 0, n = 0;
+    for (let i = lo; i <= hi; i++){ const v = freqData[i]; if (!isFinite(v)) continue; sum += v; n++; if (v > max){ max = v; idx = i; } }
+    if (idx < 0 || !n) return null;
+    const avg = sum / n;
+    const threshold = -28 - settings.sens * 0.5;  // citlivost 0..100 → -28..-78 dB
+    if (max < threshold || max - avg < 22) return null; // příliš tiché nebo to není čistý tón
+    const a = freqData[idx-1], b = max, c = freqData[idx+1];
+    const p = (a - 2*b + c) !== 0 ? .5 * (a - c) / (a - 2*b + c) : 0;
+    return (idx + p) * binHz;
+  }
+  function readWhistle(){
+    const f = detectPitch();
+    if (f){
+      const l = Math.log(f);
+      pitchLog = pitchLog == null || now() - lastWhistle > 250 ? l : pitchLog*.55 + l*.45;
+      lastWhistle = now();
+      stableCount++;
+      if (stableCount > 4){
+        const pf = Math.exp(pitchLog);
+        if (pf < settings.lo){ settings.lo = pf; save(); }
+        if (pf > settings.hi){ settings.hi = pf; save(); }
+      }
+      rawEl.textContent = 'Tón: ' + Math.round(f) + ' Hz';
+    } else {
+      stableCount = 0;
+      if (now() - lastWhistle > 400 && analyser) rawEl.textContent = 'Ticho';
+    }
+    return now() - lastWhistle < 160; // krátké výpadky ignorujeme
+  }
+
+  // ---------- Herní smyčka ----------
   function update(dt){
     elapsed += dt;
-    const speed = Math.max(Math.min(W,H)*0.3, 110);
-    const [dx,dy] = DIRS[dir];
-    ship.x = clamp(ship.x + dx*speed*dt, 18, W-18);
-    ship.y = clamp(ship.y + dy*speed*dt, 18, H-18);
+    const f = SPEED[settings.speed];
+    const speed = Math.max(Math.min(W,H)*0.2, 80) * f;
+    const m = 24;
+
+    if (settings.mode === 'whistle'){
+      const whistling = readWhistle();
+      const oldY = ship.y;
+      let vx;
+      if (whistling && pitchLog != null){
+        const t = clamp((pitchLog - Math.log(settings.lo)) / Math.max(Math.log(settings.hi) - Math.log(settings.lo), .2), 0, 1);
+        targetY = m + (1 - t) * (H - 2*m);
+        ship.y += (targetY - ship.y) * Math.min(1, dt * 7);
+        vx = speed * .75;
+      } else {
+        targetY = null;
+        vx = -speed * .35;
+      }
+      ship.x = clamp(ship.x + vx*dt, 18, W-18);
+      ship.y = clamp(ship.y, 18, H-18);
+      const vy = (ship.y - oldY) / Math.max(dt, .001);
+      ship.thrust = whistling;
+      ship.angle = Math.atan2(vy, whistling ? Math.abs(vx) : Math.abs(vx)*2.5) ;
+    } else {
+      const [dx,dy] = DIRS[dir];
+      ship.x = clamp(ship.x + dx*speed*dt, 18, W-18);
+      ship.y = clamp(ship.y + dy*speed*dt, 18, H-18);
+      ship.thrust = dir !== 'stop';
+    }
     if (invuln > 0) invuln -= dt;
 
     spawnT -= dt;
-    if (spawnT <= 0){ spawnAsteroid(); spawnT = Math.max(1.0, 2.8 - elapsed*0.02); }
+    if (spawnT <= 0){ spawnAsteroid(); spawnT = Math.max(1.6, 3.4 - elapsed*0.015) / f; }
 
     for (const a of asteroids){ a.x += a.vx*dt; a.y += a.vy*dt; a.rot += a.vr*dt; }
     asteroids = asteroids.filter(a => a.x > -80 && a.x < W+80 && a.y > -80 && a.y < H+80);
 
     for (let i = stars.length-1; i >= 0; i--){
       const s = stars[i]; s.t += dt;
-      if (Math.hypot(s.x-ship.x, s.y-ship.y) < 26){ stars.splice(i,1); score++; scoreEl.textContent = score; spawnStar(); }
+      if (Math.hypot(s.x-ship.x, s.y-ship.y) < 26){ stars.splice(i,1); score++; scoreEl.textContent = score; sfx.star(); spawnStar(); }
     }
     if (invuln <= 0){
       for (const a of asteroids){
         if (Math.hypot(a.x-ship.x, a.y-ship.y) < a.r*.85 + 12){
           lives--; livesEl.textContent = lives; invuln = 2; a.x = -999;
+          sfx.hit();
           if (navigator.vibrate) navigator.vibrate(120);
           if (lives <= 0){ gameOver(); return; }
           break;
@@ -236,12 +513,23 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
       a.pts.forEach((p,i) => { const x = Math.cos(p.a)*a.r*p.m, y = Math.sin(p.a)*a.r*p.m; i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
       ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
     }
+    // ukazatel výšky tónu
+    if (settings.mode === 'whistle'){
+      const x = W - 14, m = 24;
+      ctx.strokeStyle = 'rgba(160,156,208,.35)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, m); ctx.lineTo(x, H-m); ctx.stroke();
+      if (targetY != null){
+        ctx.fillStyle = '#FFB547'; ctx.beginPath(); ctx.arc(x, targetY, 7, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,181,71,.25)'; ctx.lineWidth = 1; ctx.setLineDash([4,6]);
+        ctx.beginPath(); ctx.moveTo(ship.x + 20, targetY); ctx.lineTo(x - 10, targetY); ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
     const blink = invuln > 0 && Math.floor(invuln*10)%2 === 0;
     if (!blink){
       ctx.save(); ctx.translate(ship.x, ship.y); ctx.rotate(ship.angle);
-      if (dir !== 'stop'){
-        const f = 8 + Math.random()*6;
-        ctx.fillStyle = '#FF7A3D'; ctx.beginPath(); ctx.moveTo(-10,-5); ctx.lineTo(-10-f,0); ctx.lineTo(-10,5); ctx.closePath(); ctx.fill();
+      if (ship.thrust){
+        const fl = 8 + Math.random()*6;
+        ctx.fillStyle = '#FF7A3D'; ctx.beginPath(); ctx.moveTo(-10,-5); ctx.lineTo(-10-fl,0); ctx.lineTo(-10,5); ctx.closePath(); ctx.fill();
       }
       ctx.fillStyle = '#FFB547';
       ctx.beginPath(); ctx.moveTo(18,0); ctx.lineTo(-12,-12); ctx.lineTo(-6,0); ctx.lineTo(-12,12); ctx.closePath(); ctx.fill();
@@ -259,32 +547,40 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
 
   function gameOver(){
     running = false;
+    sfx.over();
     const word = score === 1 ? 'hvězdu' : (score >= 2 && score <= 4 ? 'hvězdy' : 'hvězd');
     ovTitle.textContent = 'Konec hry';
-    ovText.textContent = 'Nasbíral jsi ' + score + ' ' + word + '. Řekni „znovu“ nebo klepni na tlačítko.';
+    ovText.textContent = 'Nasbíral jsi ' + score + ' ' + word + '.' + (settings.mode === 'voice' ? ' Řekni „znovu“ nebo klepni na tlačítko.' : '');
+    ovWords.innerHTML = '';
+    micNote.textContent = '';
     startBtn.textContent = 'Hrát znovu';
     overlay.hidden = false;
   }
 
   function start(){
+    ensureAudio();
     resize(); reset();
     overlay.hidden = true; running = true;
-    listen(); // spuštěno klepnutím — iOS to vyžaduje
+    sfx.start();
+    applyInput(); // spuštěno klepnutím — iOS to vyžaduje
+  }
+
+  function applyInput(){
+    if (settings.mode === 'voice'){ stopWhistle(); listen(); }
+    else { stopVoice(); startWhistle(); }
   }
 
   // ---------- Rozpoznávání řeči ----------
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  let rec = null, wantListen = false, processed = {}, lastEvent = 0, restartT = null;
+  let rec = null, wantListen = false, processed = {}, lastEvent = 0, restartT = null, lastCmd = null;
 
   function norm(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?]/g,''); }
   function wordToCmd(w){
-    if (/^(doleva|vlevo|leva|levo|lev)$/.test(w)) return 'left';
-    if (/^(doprava|vpravo|prava|pravo)$/.test(w)) return 'right';
-    if (/^(nahoru|nahore|nahoro|hore|nahor)$/.test(w)) return 'up';
-    if (/^(dolu|dole|dolo|dolni)$/.test(w)) return 'down';
-    if (/^(stop|stuj|zastav|stat|stoj)$/.test(w)) return 'stop';
-    if (/^(znovu|start|hraj)$/.test(w)) return 'restart';
+    if (/^(dolev|vlev|lev|lef)/.test(w)) return 'left';
+    if (/^(doprav|vprav|prav)/.test(w)) return 'right';
+    if (/^(nahor|naho|hore|hor|nahr)/.test(w)) return 'up';
+    if (/^(dolu|dole|dolo|dol)/.test(w)) return 'down';
+    if (/^(stop|stuj|stoj|zastav|stat)/.test(w)) return 'stop';
+    if (/^(znovu|start|hraj)/.test(w)) return 'restart';
     return null;
   }
 
@@ -296,31 +592,35 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
   function createRec(){
     const r = new SR();
     r.lang = 'cs-CZ';
-    r.continuous = !isIOS;      // na iOS krátké úseky = stabilnější
-    r.interimResults = true;    // rychlejší reakce
-    r.onstart = () => { lastEvent = performance.now(); setMic('on', 'Poslouchám — klepnutím restartuješ'); rawEl.textContent = 'Mikrofon běží (' + r.lang + '), mluv…'; };
+    r.continuous = !isIOS;
+    r.interimResults = true;
+    r.onstart = () => { lastEvent = now(); setMic('on', 'Poslouchám — klepnutím restartuješ'); rawEl.textContent = 'Mikrofon běží, mluv…'; };
     r.onaudiostart = () => { rawEl.textContent = 'Zvuk přichází, mluv…'; };
     r.onspeechstart = () => { rawEl.textContent = 'Slyším řeč…'; };
     r.onnomatch = () => { rawEl.textContent = 'Řeč nerozpoznána'; };
     r.onresult = (e) => {
-      lastEvent = performance.now();
+      lastEvent = now();
       for (let i = e.resultIndex; i < e.results.length; i++){
         const text = e.results[i][0].transcript;
         rawEl.textContent = 'Slyším: ' + text;
         const words = norm(text).trim().split(/\s+/).filter(Boolean);
         let done = processed[i] || 0;
-        if (words.length < done) done = words.length; // iOS občas přepíše text
-        for (let k = done; k < words.length; k++){
+        if (words.length < done) done = words.length;
+        let found = false;
+        for (let k = Math.max(done - 1, 0); k < words.length; k++){
           const cmd = wordToCmd(words[k]);
           if (!cmd) continue;
-          if (cmd === 'restart'){ if (!running) start(); }
-          else if (running) setDir(cmd);
+          if (k < done && cmd === lastCmd) continue;
+          found = true; lastCmd = cmd;
+          if (cmd === 'restart'){ if (!running && sheet.hidden) start(); }
+          else if (running && cmd !== dir) setDir(cmd);
         }
         processed[i] = words.length;
+        if (found && isIOS){ clearTimeout(restartT); restartT = setTimeout(restart, 40); return; }
       }
     };
     r.onerror = (e) => {
-      lastEvent = performance.now();
+      lastEvent = now();
       rawEl.textContent = 'Chyba: ' + e.error + (e.message ? ' — ' + e.message : '');
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed'){
         wantListen = false;
@@ -330,7 +630,7 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
     r.onend = () => {
       if (r !== rec) return;
       processed = {};
-      if (wantListen){ clearTimeout(restartT); restartT = setTimeout(restart, isIOS ? 250 : 100); }
+      if (wantListen){ clearTimeout(restartT); restartT = setTimeout(restart, isIOS ? 60 : 100); }
       else if (!dot.classList.contains('err')) setMic('', 'Mikrofon vypnutý — klepni pro zapnutí');
     };
     return r;
@@ -339,45 +639,49 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
   function restart(){
     if (!wantListen) return;
     if (rec){ const old = rec; rec = null; try { old.abort(); } catch(e){} }
-    rec = createRec();               // na iOS vždy nová instance
-    processed = {};
-    lastEvent = performance.now();
+    rec = createRec();
+    processed = {}; lastCmd = null;
+    lastEvent = now();
     try { rec.start(); }
     catch(e){ setMic('err', 'Klepni sem pro zapnutí mikrofonu'); rawEl.textContent = 'Start selhal: ' + e.message; }
   }
-
   function listen(){
-    if (!SR){ setMic('err', 'Hlas tady nejde — hraj šipkami'); rawEl.textContent = 'Prohlížeč nemá rozpoznávání řeči'; return; }
+    if (!SR){ setMic('err', 'Hlas tady nejde — přepni na pískání nebo hraj šipkami'); rawEl.textContent = 'Prohlížeč nemá rozpoznávání řeči'; return; }
     wantListen = true;
     restart();
   }
+  function stopVoice(){
+    wantListen = false; clearTimeout(restartT);
+    if (rec){ const old = rec; rec = null; try { old.abort(); } catch(e){} }
+  }
 
-  // hlídač: když se iOS zasekne (žádné události), restart
   setInterval(() => {
-    if (wantListen && running && !document.hidden && performance.now() - lastEvent > 7000) restart();
+    if (settings.mode === 'voice' && wantListen && running && !document.hidden && now() - lastEvent > 7000) restart();
   }, 1000);
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden){
-      if (running){ running = false; ovTitle.textContent = 'Pauza'; ovText.textContent = 'Hra je pozastavená.'; startBtn.textContent = 'Pokračovat'; overlay.hidden = false; startBtn.dataset.resume = '1'; }
-      if (rec){ const old = rec; rec = null; try { old.abort(); } catch(e){} }
+      if (running){
+        running = false;
+        ovTitle.textContent = 'Pauza'; ovText.textContent = 'Hra je pozastavená.'; ovWords.innerHTML = ''; micNote.textContent = '';
+        startBtn.textContent = 'Pokračovat'; startBtn.dataset.resume = '1'; overlay.hidden = false;
+      }
+      stopVoice(); stopWhistle();
       setMic('', 'Mikrofon vypnutý — klepni pro zapnutí');
     }
   });
 
-  if (!SR) micNote.textContent = 'Tenhle prohlížeč neumí rozpoznávat řeč. Hrát můžeš šipkami pod hrou.';
-  else if (isIOS) micNote.textContent = 'Na iPhonu musí být zapnutá Siri. Když loď přestane reagovat, klepni na mikrofon dole.';
-
   // ---------- Ovládání ----------
   startBtn.addEventListener('click', () => {
-    if (startBtn.dataset.resume){ delete startBtn.dataset.resume; overlay.hidden = true; running = true; listen(); return; }
+    if (startBtn.dataset.resume){ delete startBtn.dataset.resume; ensureAudio(); overlay.hidden = true; running = true; applyInput(); return; }
     start();
   });
-  micBtn.addEventListener('click', listen);
+  micBtn.addEventListener('click', () => { ensureAudio(); if (settings.mode === 'whistle') stopWhistle(); applyInput(); });
   const KEYMAP = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down', ' ':'stop' };
   window.addEventListener('keydown', (e) => {
+    if (!sheet.hidden){ if (e.key === 'Escape') closeSettings(); return; }
     const d = KEYMAP[e.key];
-    if (d && running){ e.preventDefault(); setDir(d); }
+    if (d && running && settings.mode === 'voice'){ e.preventDefault(); setDir(d); }
     else if (e.key === 'Enter' && !running) startBtn.click();
   });
   document.querySelectorAll('.pad button').forEach(b => {
@@ -386,6 +690,7 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
   window.addEventListener('resize', resize);
   document.addEventListener('gesturestart', (e) => e.preventDefault());
 
+  renderIntro();
   resize();
   requestAnimationFrame((t) => { last = t; loop(t); });
 })();
