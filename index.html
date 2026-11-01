@@ -50,6 +50,7 @@ h1{font-size:1.35rem; margin:0; font-weight:700}
 .stats{display:flex; gap:14px; color:var(--muted)}
 .stats b{color:var(--text); font-size:1.2rem; margin-left:4px}
 .gear{padding:8px 12px; font-size:1.1rem; line-height:1}
+.micdot{padding:10px; border:none; background:transparent; display:flex; align-items:center}
 .stage{position:relative; flex:1; min-height:0; border-radius:14px; overflow:hidden; background:#14123A; border:1px solid var(--line)}
 canvas{display:block; width:100%; height:100%; touch-action:none}
 .heard{
@@ -134,6 +135,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
         <span>Body<b id="score">0</b></span>
         <span>Životy<b id="lives">3</b></span>
       </div>
+      <button class="micdot" id="micBtn" aria-label="Mikrofon vypnutý" title="Mikrofon vypnutý"><span class="dot" id="dot"></span></button>
       <button class="gear" id="gearBtn" aria-label="Nastavení">⚙︎</button>
     </div>
   </header>
@@ -148,15 +150,11 @@ input[type=range]{width:100%; accent-color:var(--accent)}
       <div class="words" id="ovWords"></div>
       <div class="ovbtns">
         <button class="primary" id="startBtn">Spustit hru</button>
-        <button class="ghost" id="ovSettings">Nastavení</button>
       </div>
       <p id="micNote" style="font-size:.9rem"></p>
     </div>
   </div>
 
-  <div class="controls">
-    <button class="micbtn" id="micBtn"><span class="dot" id="dot"></span><span id="micStatus">Mikrofon vypnutý</span></button>
-  </div>
 </div>
 
 <div class="sheet" id="sheet" hidden>
@@ -241,7 +239,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
   const canvas = $('c'), ctx = canvas.getContext('2d'), stage = $('stage');
   const heardEl = $('heard'), rawEl = $('raw'), overlay = $('overlay');
   const ovTitle = $('ovTitle'), ovText = $('ovText'), ovWords = $('ovWords'), startBtn = $('startBtn'), micNote = $('micNote');
-  const dot = $('dot'), micStatus = $('micStatus'), micBtn = $('micBtn');
+  const dot = $('dot'), micBtn = $('micBtn');
   const scoreEl = $('score'), livesEl = $('lives');
   const sheet = $('sheet');
   const clamp = (v,a,b) => Math.min(Math.max(v,a),b);
@@ -274,11 +272,11 @@ input[type=range]{width:100%; accent-color:var(--accent)}
       ovText.textContent = 'Sbírej zlaté hvězdy a vyhýbej se asteroidům. Loď letí směrem, který řekneš, dokud nedáš jiný povel.';
       ovWords.innerHTML = '<span>vlevo</span><span>vpravo</span><span>nahoru</span><span>dolů</span><span>stop</span>';
       micNote.textContent = !SR ? 'Tenhle prohlížeč neumí rozpoznávat řeč. Přepni v nastavení na pískání.'
-        : isIOS ? 'Na iPhonu musí být zapnutá Siri. Když loď přestane reagovat, klepni na mikrofon dole.' : '';
+        : isIOS ? 'Na iPhonu musí být zapnutá Siri. Když loď přestane reagovat, klepni na tečku vpravo nahoře.' : '';
     } else if (settings.wtype === '2'){
       ovTitle.textContent = 'Řiď loď pískáním';
-      ovText.textContent = 'Tón 1 pošle loď doleva, tón 2 nahoru. Když nepískáš, letí doprava a dolů.';
-      ovWords.innerHTML = '<span>tón 1 = doleva ' + Math.round(settings.tones2.left) + ' Hz</span><span>tón 2 = nahoru ' + Math.round(settings.tones2.up) + ' Hz</span><span>ticho = doprava a dolů</span>';
+      ovText.textContent = 'Tón 1 pošle loď doleva, tón 2 nahoru. Když přestaneš pískat, letí opačně: po tónu 1 doprava, po tónu 2 dolů.';
+      ovWords.innerHTML = '<span>tón 1 = doleva ' + Math.round(settings.tones2.left) + ' Hz</span><span>tón 2 = nahoru ' + Math.round(settings.tones2.up) + ' Hz</span><span>ticho = opačný směr</span>';
       micNote.textContent = 'Vlastní tóny si nahraješ v Nastavení.';
     } else {
       ovTitle.textContent = 'Řiď loď pískáním';
@@ -299,7 +297,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     $('cal4').hidden = two; $('chips4').hidden = two;
     $('cal2').hidden = !two; $('chips2').hidden = !two;
     $('wtypeHint').textContent = two
-      ? 'Tón 1 = doleva, tón 2 = nahoru. V tichu letí loď doprava a dolů, takže se pořád pohybuje.'
+      ? 'Tón 1 = doleva, tón 2 = nahoru. Když přestaneš pískat, letí loď opačně po stejné ose: po tónu 1 doprava, po tónu 2 dolů.'
       : 'Každý směr má svůj tón. Loď letí, dokud pískáš, v tichu stojí.';
     $('calHint').textContent = two
       ? 'Klepni na Nahrát a zapískej, tón drž asi vteřinu. Oba tóny ať jsou hodně odlišné, třeba jeden nízký a druhý vysoký.'
@@ -349,7 +347,6 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     renderIntro();
   }
   $('gearBtn').addEventListener('click', openSettings);
-  $('ovSettings').addEventListener('click', openSettings);
   $('doneBtn').addEventListener('click', closeSettings);
   sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSettings(); });
 
@@ -410,7 +407,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
 
   function reset(){
     ship = { x:W/2, y:H/2, angle:-Math.PI/2, thrust:false };
-    dir = 'stop'; asteroids = []; stars = []; score = 0; lives = 3; invuln = 1.5; elapsed = 0; spawnT = 1;
+    dir = 'stop'; lastAxis = null; lastT2 = null; asteroids = []; stars = []; score = 0; lives = 3; invuln = 1.5; elapsed = 0; spawnT = 1;
     scoreEl.textContent = 0; livesEl.textContent = 3;
     spawnStar();
   }
@@ -510,7 +507,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     clearTimeout(heardT);
     heardT = setTimeout(() => heardEl.classList.remove('show'), 900);
   }
-  let whistleDir = null, candDir = null, candCount = 0, lastT2 = null;
+  let whistleDir = null, candDir = null, candCount = 0, lastT2 = null, lastAxis = null;
   function readWhistle(){
     if (now() < sfxUntil) return whistleDir; // během zvukového efektu držíme směr
     const f = detectPitch();
@@ -624,14 +621,19 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     const m = 24;
 
     if (settings.mode === 'whistle' && settings.wtype === '2'){
-      // 2 tóny: každá osa zvlášť — tón 1 doleva / jinak doprava, tón 2 nahoru / jinak dolů
+      // 2 tóny: vždy jen vodorovně nebo svisle — osu určí poslední tón,
+      // tón 1 = doleva (ticho pak doprava), tón 2 = nahoru (ticho pak dolů)
       const wd = readWhistle();
-      if (wd !== lastT2){ lastT2 = wd; if (wd) flash(wd === 'left' ? 'Doleva' : 'Nahoru'); }
-      const vx = wd === 'left' ? -1 : 1, vy = wd === 'up' ? -1 : 1, s2 = speed * .8;
-      ship.x = clamp(ship.x + vx*s2*dt, 18, W-18);
-      ship.y = clamp(ship.y + vy*s2*dt, 18, H-18);
-      ship.angle = Math.atan2(vy, vx);
-      ship.thrust = true;
+      if (wd === 'left') lastAxis = 'h'; else if (wd === 'up') lastAxis = 'v';
+      let vx = 0, vy = 0;
+      if (lastAxis === 'h') vx = wd === 'left' ? -1 : 1;
+      if (lastAxis === 'v') vy = wd === 'up' ? -1 : 1;
+      const move = vx < 0 ? 'Doleva' : vx > 0 ? 'Doprava' : vy < 0 ? 'Nahoru' : vy > 0 ? 'Dolů' : null;
+      if (move !== lastT2){ lastT2 = move; if (move) flash(move); }
+      ship.x = clamp(ship.x + vx*speed*dt, 18, W-18);
+      ship.y = clamp(ship.y + vy*speed*dt, 18, H-18);
+      if (vx || vy) ship.angle = Math.atan2(vy, vx);
+      ship.thrust = !!(vx || vy);
     } else {
       if (settings.mode === 'whistle'){
         const wd = readWhistle();
@@ -755,7 +757,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
 
   function setMic(state, text){
     dot.className = 'dot' + (state === 'on' ? ' on' : state === 'err' ? ' err' : '');
-    micStatus.textContent = text;
+    micBtn.setAttribute('aria-label', text); micBtn.title = text;
   }
 
   function createRec(){
