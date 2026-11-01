@@ -49,7 +49,7 @@ h1{font-size:1.35rem; margin:0; font-weight:700}
 .hright{display:flex; align-items:center; gap:14px}
 .stats{display:flex; gap:14px; color:var(--muted)}
 .stats b{color:var(--text); font-size:1.2rem; margin-left:4px}
-.gear{padding:8px 12px; font-size:1.1rem; line-height:1}
+.gear{padding:4px 10px; font-size:1.9rem; line-height:1; min-width:52px; min-height:48px}
 .micdot{padding:10px; border:none; background:transparent; display:flex; align-items:center}
 .stage{position:relative; flex:1; min-height:0; border-radius:14px; overflow:hidden; background:#14123A; border:1px solid var(--line)}
 canvas{display:block; width:100%; height:100%; touch-action:none}
@@ -206,8 +206,8 @@ input[type=range]{width:100%; accent-color:var(--accent)}
           <div class="calrow"><div><small>▼ Dolů</small><b id="tone4-down"></b></div><button class="rec" data-cal="down">Nahrát</button></div>
         </div>
         <div id="cal2">
-          <div class="calrow"><div><small>Tón 1 — doleva, v tichu doprava</small><b id="tone2-left"></b></div><button class="rec" data-cal="left">Nahrát</button></div>
-          <div class="calrow"><div><small>Tón 2 — nahoru, v tichu dolů</small><b id="tone2-up"></b></div><button class="rec" data-cal="up">Nahrát</button></div>
+          <div class="calrow"><div><small>Tón 1 — přepíná doleva / doprava</small><b id="tone2-left"></b></div><button class="rec" data-cal="left">Nahrát</button></div>
+          <div class="calrow"><div><small>Tón 2 — přepíná nahoru / dolů</small><b id="tone2-up"></b></div><button class="rec" data-cal="up">Nahrát</button></div>
         </div>
         <p class="calstatus" id="calStatus" aria-live="polite"></p>
       </div>
@@ -223,7 +223,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
         <div class="meter"><div class="fill" id="lvlFill"></div><div class="mark" id="lvlMark"></div></div>
         <span class="hint">Rozpoznaný tón</span>
         <div class="dirs" id="chips4"><span id="chip4-up">▲ nahoru</span><span id="chip4-right">▶ doprava</span><span id="chip4-left">◀ doleva</span><span id="chip4-down">▼ dolů</span></div>
-        <div class="dirs two" id="chips2"><span id="chip2-left">Tón 1 · doleva</span><span id="chip2-up">Tón 2 · nahoru</span></div>
+        <div class="dirs two" id="chips2"><span id="chip2-left">Tón 1 · ↔ doleva / doprava</span><span id="chip2-up">Tón 2 · ↕ nahoru / dolů</span></div>
       </div>
       <button id="resetRange">Vrátit výchozí tóny</button>
       <p class="hint">Tóny se ukládají a platí i příště. Výchozí se hodí, když hraje někdo jiný a chce si nahrát vlastní.</p>
@@ -251,7 +251,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
   const DIR_ORDER = ['up','right','left','down'];
   const DIR_NAME = { up:'nahoru', right:'doprava', left:'doleva', down:'dolů' };
   const T2_NAME = { left:'tón 1', up:'tón 2' };
-  const T2_DIR = { left:'doleva', up:'nahoru' };
+  const T2_DIR = { left:'doleva/doprava', up:'nahoru/dolů' };
   const keys = () => settings.wtype === '2' ? ['left','up'] : DIR_ORDER;
   const tones = () => settings.wtype === '2' ? settings.tones2 : settings.tones;
   const toneName = (d) => settings.wtype === '2' ? T2_NAME[d] + ' (' + T2_DIR[d] + ')' : DIR_NAME[d];
@@ -275,8 +275,8 @@ input[type=range]{width:100%; accent-color:var(--accent)}
         : isIOS ? 'Na iPhonu musí být zapnutá Siri. Když loď přestane reagovat, klepni na tečku vpravo nahoře.' : '';
     } else if (settings.wtype === '2'){
       ovTitle.textContent = 'Řiď loď pískáním';
-      ovText.textContent = 'Tón 1 pošle loď doleva, tón 2 nahoru. Když přestaneš pískat, letí opačně: po tónu 1 doprava, po tónu 2 dolů.';
-      ovWords.innerHTML = '<span>tón 1 = doleva ' + Math.round(settings.tones2.left) + ' Hz</span><span>tón 2 = nahoru ' + Math.round(settings.tones2.up) + ' Hz</span><span>ticho = opačný směr</span>';
+      ovText.textContent = 'Krátké písknutí mění směr. Tón 1 přepíná doleva a doprava, tón 2 nahoru a dolů. Loď mezitím letí dál.';
+      ovWords.innerHTML = '<span>tón 1 ↔ ' + Math.round(settings.tones2.left) + ' Hz</span><span>tón 2 ↕ ' + Math.round(settings.tones2.up) + ' Hz</span>';
       micNote.textContent = 'Vlastní tóny si nahraješ v Nastavení.';
     } else {
       ovTitle.textContent = 'Řiď loď pískáním';
@@ -297,7 +297,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     $('cal4').hidden = two; $('chips4').hidden = two;
     $('cal2').hidden = !two; $('chips2').hidden = !two;
     $('wtypeHint').textContent = two
-      ? 'Tón 1 = doleva, tón 2 = nahoru. Když přestaneš pískat, letí loď opačně po stejné ose: po tónu 1 doprava, po tónu 2 dolů.'
+      ? 'Stačí krátké písknutí. Tón 1 přepíná doleva a doprava, tón 2 nahoru a dolů. Loď letí zvoleným směrem, dokud nepískneš znovu.'
       : 'Každý směr má svůj tón. Loď letí, dokud pískáš, v tichu stojí.';
     $('calHint').textContent = two
       ? 'Klepni na Nahrát a zapískej, tón drž asi vteřinu. Oba tóny ať jsou hodně odlišné, třeba jeden nízký a druhý vysoký.'
@@ -407,7 +407,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
 
   function reset(){
     ship = { x:W/2, y:H/2, angle:-Math.PI/2, thrust:false };
-    dir = 'stop'; lastAxis = null; lastT2 = null; asteroids = []; stars = []; score = 0; lives = 3; invuln = 1.5; elapsed = 0; spawnT = 1;
+    dir = 'stop'; lastAxis = null; lastT2 = null; hDir = 1; vDir = 1; prevWd = null; asteroids = []; stars = []; score = 0; lives = 3; invuln = 1.5; elapsed = 0; spawnT = 1;
     scoreEl.textContent = 0; livesEl.textContent = 3;
     spawnStar();
   }
@@ -507,7 +507,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     clearTimeout(heardT);
     heardT = setTimeout(() => heardEl.classList.remove('show'), 900);
   }
-  let whistleDir = null, candDir = null, candCount = 0, lastT2 = null, lastAxis = null;
+  let whistleDir = null, candDir = null, candCount = 0, lastT2 = null, lastAxis = null, hDir = 1, vDir = 1, prevWd = null;
   function readWhistle(){
     if (now() < sfxUntil) return whistleDir; // během zvukového efektu držíme směr
     const f = detectPitch();
@@ -621,13 +621,17 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     const m = 24;
 
     if (settings.mode === 'whistle' && settings.wtype === '2'){
-      // 2 tóny: vždy jen vodorovně nebo svisle — osu určí poslední tón,
-      // tón 1 = doleva (ticho pak doprava), tón 2 = nahoru (ticho pak dolů)
+      // 2 tóny jako impulsy: každé nové písknutí přepne směr,
+      // tón 1 doleva ↔ doprava, tón 2 nahoru ↕ dolů; loď letí dál, dokud nepískneš znovu
       const wd = readWhistle();
-      if (wd === 'left') lastAxis = 'h'; else if (wd === 'up') lastAxis = 'v';
+      if (wd && wd !== prevWd){
+        if (wd === 'left'){ hDir = -hDir; lastAxis = 'h'; }   // první tón 1 = doleva
+        else { vDir = -vDir; lastAxis = 'v'; }               // první tón 2 = nahoru
+      }
+      prevWd = wd;
       let vx = 0, vy = 0;
-      if (lastAxis === 'h') vx = wd === 'left' ? -1 : 1;
-      if (lastAxis === 'v') vy = wd === 'up' ? -1 : 1;
+      if (lastAxis === 'h') vx = hDir;
+      if (lastAxis === 'v') vy = vDir;
       const move = vx < 0 ? 'Doleva' : vx > 0 ? 'Doprava' : vy < 0 ? 'Nahoru' : vy > 0 ? 'Dolů' : null;
       if (move !== lastT2){ lastT2 = move; if (move) flash(move); }
       ship.x = clamp(ship.x + vx*speed*dt, 18, W-18);
