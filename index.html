@@ -108,6 +108,25 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
 input[type=range]{width:100%; accent-color:var(--accent)}
 .row{display:flex; justify-content:space-between; color:var(--muted); font-size:.85rem}
 .panel .done{background:var(--accent); color:var(--on-accent); border-color:var(--accent); padding:14px; font-size:1.1rem}
+.test{border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px}
+.testmsg{font-weight:600; min-height:2.8em; line-height:1.4}
+.meter{position:relative; height:14px; border-radius:7px; background:color-mix(in srgb, var(--muted) 22%, transparent); overflow:hidden}
+.meter .fill{position:absolute; left:0; top:0; bottom:0; width:0; background:var(--muted)}
+.meter .fill.hit{background:var(--ok)}
+.meter .mark{position:absolute; top:0; bottom:0; width:3px; margin-left:-1px; background:var(--text)}
+.pitchbar{position:relative; height:30px; border-radius:8px; background:linear-gradient(90deg, color-mix(in srgb, var(--muted) 22%, transparent), color-mix(in srgb, var(--accent) 30%, transparent))}
+.pitchbar .knob{position:absolute; top:50%; width:20px; height:20px; margin:-10px 0 0 -10px; border-radius:50%; background:var(--accent); border:2px solid var(--surface); display:none}
+.test .hint + .meter, .test .hint + .pitchbar{margin-top:-2px}
+.cal{border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px}
+.calrow{display:flex; align-items:center; justify-content:space-between; gap:10px}
+.calrow b{display:block; font-size:1.1rem}
+.calrow small{color:var(--muted)}
+.calrow button.rec{border-color:var(--accent)}
+.calrow button.rec.live{background:var(--accent); color:var(--on-accent)}
+.calstatus{margin:0; min-height:1.4em; font-weight:600; line-height:1.4}
+.dirs{display:grid; grid-template-columns:repeat(4,1fr); gap:6px}
+.dirs span{border:1px solid var(--line); border-radius:10px; padding:8px 4px; text-align:center; font-size:.9rem; color:var(--muted)}
+.dirs span.on{background:var(--accent); border-color:var(--accent); color:var(--on-accent); font-weight:700}
 @media (prefers-reduced-motion: reduce){ .heard{transition:none} }
 </style>
 </head>
@@ -184,12 +203,30 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     </div>
 
     <div class="field" id="whistleFields">
+      <span class="label">Tóny pro směry</span>
+      <div class="cal">
+        <p class="hint">Každý směr má svůj tón. Klepni na Nahrát a zapískej, tón drž asi vteřinu. Nejsnáz se to pamatuje takhle: nahoru nejvyšší, dolů nejnižší, doprava a doleva mezi nimi.</p>
+        <div class="calrow"><div><small>▲ Nahoru</small><b id="tone-up"></b></div><button class="rec" data-cal="up">Nahrát</button></div>
+        <div class="calrow"><div><small>▶ Doprava</small><b id="tone-right"></b></div><button class="rec" data-cal="right">Nahrát</button></div>
+        <div class="calrow"><div><small>◀ Doleva</small><b id="tone-left"></b></div><button class="rec" data-cal="left">Nahrát</button></div>
+        <div class="calrow"><div><small>▼ Dolů</small><b id="tone-down"></b></div><button class="rec" data-cal="down">Nahrát</button></div>
+        <p class="calstatus" id="calStatus" aria-live="polite"></p>
+      </div>
+
       <label class="label" for="sens">Citlivost na pískání</label>
       <input type="range" id="sens" min="0" max="100" step="1">
       <div class="row"><span>Jen hlasité pískání</span><span>I tiché pískání</span></div>
-      <p class="hint">Když loď reaguje na hluk v místnosti, citlivost snižte. Když nereaguje na pískání, zvyšte ji.</p>
-      <button id="resetRange">Vynulovat rozsah tónů</button>
-      <p class="hint">Hra si sama učí, jak vysoko a nízko pískáte. Vynulujte rozsah, když hraje někdo jiný.</p>
+      <p class="hint">Když loď reaguje na hluk v místnosti, citlivost sniž. Když nereaguje na pískání, zvyš ji.</p>
+      <div class="test">
+        <button id="testBtn">Spustit test pískání</button>
+        <div class="testmsg" id="testMsg" aria-live="polite">Zapni test a zapískej. Uvidíš, jestli hra tón slyší a kam by loď letěla.</div>
+        <span class="hint">Hlasitost — svislá čára je práh citlivosti, zelená znamená rozpoznáno</span>
+        <div class="meter"><div class="fill" id="lvlFill"></div><div class="mark" id="lvlMark"></div></div>
+        <span class="hint">Rozpoznaný směr</span>
+        <div class="dirs"><span id="chip-up">▲ nahoru</span><span id="chip-right">▶ doprava</span><span id="chip-left">◀ doleva</span><span id="chip-down">▼ dolů</span></div>
+      </div>
+      <button id="resetRange">Vrátit výchozí tóny</button>
+      <p class="hint">Hodí se, když hraje někdo jiný a chce si nahrát vlastní tóny.</p>
     </div>
 
     <button class="done" id="doneBtn">Hotovo</button>
@@ -210,9 +247,12 @@ input[type=range]{width:100%; accent-color:var(--accent)}
 
   // ---------- Nastavení ----------
   const KEY = 'hlasovaLod.settings';
-  const DEFAULTS = { mode:'voice', speed:'normal', sound:true, sens:50, lo:900, hi:2000 };
+  const DEFAULTS = { mode:'voice', speed:'normal', sound:true, sens:50, tones:{ up:2000, right:1500, left:1150, down:850 } };
+  const DIR_ORDER = ['up','right','left','down'];
+  const DIR_NAME = { up:'nahoru', right:'doprava', left:'doleva', down:'dolů' };
   let settings = Object.assign({}, DEFAULTS);
   try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s) settings = Object.assign(settings, s); } catch(e){}
+  settings.tones = Object.assign({}, DEFAULTS.tones, settings.tones || {});
   function save(){ try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch(e){} }
   const SPEED = { slow:.7, normal:1, fast:1.35 };
 
@@ -228,9 +268,9 @@ input[type=range]{width:100%; accent-color:var(--accent)}
         : isIOS ? 'Na iPhonu musí být zapnutá Siri. Když loď přestane reagovat, klepni na mikrofon dole.' : '';
     } else {
       ovTitle.textContent = 'Řiď loď pískáním';
-      ovText.textContent = 'Vysoký tón pošle loď nahoru, nízký dolů. Dokud pískáš, letí dopředu. Když přestaneš, pomalu couvá.';
-      ovWords.innerHTML = '<span>vysoko = nahoru</span><span>nízko = dolů</span><span>ticho = couvání</span>';
-      micNote.textContent = 'Pár vteřin si hra učí tvůj rozsah — zkus na začátku zapískat nejvýš a nejníž, jak umíš.';
+      ovText.textContent = 'Každý směr má svůj tón. Loď letí, dokud pískáš, a v tichu se zastaví.';
+      ovWords.innerHTML = DIR_ORDER.map(d => '<span>' + DIR_NAME[d] + ' ' + Math.round(settings.tones[d]) + ' Hz</span>').join('');
+      micNote.textContent = 'Vlastní tóny si nahraješ v Nastavení.';
     }
     pad.hidden = settings.mode !== 'voice';
   }
@@ -241,15 +281,16 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     document.querySelector(`input[name=sound][value=${settings.sound ? 'on' : 'off'}]`).checked = true;
     $('sens').value = settings.sens;
     $('whistleFields').hidden = settings.mode !== 'whistle';
+    showRange();
     $('modeHint').textContent = settings.mode === 'voice'
       ? 'Povely vlevo, vpravo, nahoru, dolů a stop. Na iPhonu reaguje se zpožděním kolem vteřiny.'
-      : 'Reaguje okamžitě. Výška tónu určuje výšku lodi.';
+      : 'Reaguje okamžitě. Každý směr má vlastní tón, loď letí, dokud pískáš.';
     $('soundHint').textContent = (settings.mode === 'voice' && isIOS)
       ? 'Na iPhonu můžou zvuky občas přerušit rozpoznávání řeči. Když hlas přestane fungovat, zkus je vypnout.' : '';
   }
   sheet.addEventListener('change', (e) => {
     const t = e.target;
-    if (t.name === 'mode') settings.mode = t.value;
+    if (t.name === 'mode'){ settings.mode = t.value; if (t.value !== 'whistle') stopTest(); }
     if (t.name === 'speed') settings.speed = t.value;
     if (t.name === 'sound') settings.sound = t.value === 'on';
     if (t.id === 'sens') settings.sens = +t.value;
@@ -257,10 +298,13 @@ input[type=range]{width:100%; accent-color:var(--accent)}
   });
   $('sens').addEventListener('input', (e) => { settings.sens = +e.target.value; save(); });
   $('resetRange').addEventListener('click', () => {
-    settings.lo = DEFAULTS.lo; settings.hi = DEFAULTS.hi; save();
-    $('resetRange').textContent = 'Rozsah vynulován';
-    setTimeout(() => $('resetRange').textContent = 'Vynulovat rozsah tónů', 1500);
+    settings.tones = Object.assign({}, DEFAULTS.tones); save();
+    showRange(); renderIntro();
+    $('calStatus').textContent = 'Tóny jsou zpět na výchozích hodnotách.';
   });
+  function showRange(){
+    for (const d of DIR_ORDER) $('tone-' + d).textContent = Math.round(settings.tones[d]) + ' Hz';
+  }
 
   let wasRunning = false;
   function openSettings(){
@@ -270,6 +314,8 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     $('doneBtn').focus();
   }
   function closeSettings(){
+    stopTest();
+    if (!ship) stopWhistle();
     sheet.hidden = true;
     ensureAudio();
     if (wasRunning){ running = true; applyInput(); }
@@ -337,7 +383,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
   const bgStars = Array.from({length:110}, () => ({ x:Math.random(), y:Math.random(), r:Math.random()*1.4+.3, s:Math.random()*.6+.2 }));
 
   function reset(){
-    ship = { x: settings.mode === 'whistle' ? W*.25 : W/2, y:H/2, angle: settings.mode === 'whistle' ? 0 : -Math.PI/2, thrust:false };
+    ship = { x:W/2, y:H/2, angle:-Math.PI/2, thrust:false };
     dir = 'stop'; asteroids = []; stars = []; score = 0; lives = 3; invuln = 1.5; elapsed = 0; spawnT = 1;
     scoreEl.textContent = 0; livesEl.textContent = 3;
     spawnStar();
@@ -397,40 +443,143 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     if (micSrc){ try { micSrc.disconnect(); } catch(e){} micSrc = null; }
     analyser = null;
   }
-  function detectPitch(){
-    if (!analyser || now() < sfxUntil) return null;
+  const threshold = () => -28 - settings.sens * 0.5;  // citlivost 0..100 → -28..-78 dB
+  function analyze(){
+    if (!analyser) return null;
     analyser.getFloatFrequencyData(freqData);
     const binHz = actx.sampleRate / analyser.fftSize;
     const lo = Math.floor(450 / binHz), hi = Math.min(Math.ceil(4200 / binHz), freqData.length - 2);
     let max = -Infinity, idx = -1, sum = 0, n = 0;
     for (let i = lo; i <= hi; i++){ const v = freqData[i]; if (!isFinite(v)) continue; sum += v; n++; if (v > max){ max = v; idx = i; } }
-    if (idx < 0 || !n) return null;
+    if (idx < 0 || !n) return { max:-120, freq:null, loud:false, tonal:false };
     const avg = sum / n;
-    const threshold = -28 - settings.sens * 0.5;  // citlivost 0..100 → -28..-78 dB
-    if (max < threshold || max - avg < 22) return null; // příliš tiché nebo to není čistý tón
-    const a = freqData[idx-1], b = max, c = freqData[idx+1];
-    const p = (a - 2*b + c) !== 0 ? .5 * (a - c) / (a - 2*b + c) : 0;
-    return (idx + p) * binHz;
+    const loud = max >= threshold(), tonal = max - avg >= 22; // dost hlasité + čistý tón
+    let freq = null;
+    if (loud && tonal){
+      const a = freqData[idx-1], b = max, c = freqData[idx+1];
+      const p = (a - 2*b + c) !== 0 ? .5 * (a - c) / (a - 2*b + c) : 0;
+      freq = (idx + p) * binHz;
+    }
+    return { max, freq, loud, tonal };
   }
+  function detectPitch(){
+    if (now() < sfxUntil) return null;
+    const r = analyze();
+    return r ? r.freq : null;
+  }
+  // přiřazení tónu k nejbližšímu nahranému směru (max. ~3 půltóny vedle)
+  function classify(f){
+    const l = Math.log(f);
+    let best = null, bd = Infinity;
+    for (const d of DIR_ORDER){ const dd = Math.abs(l - Math.log(settings.tones[d])); if (dd < bd){ bd = dd; best = d; } }
+    return bd < Math.log(1.22) ? best : null;
+  }
+  function showChip(d){
+    for (const x of DIR_ORDER) $('chip-' + x).classList.toggle('on', x === d);
+  }
+  let whistleDir = null, candDir = null, candCount = 0;
   function readWhistle(){
+    if (now() < sfxUntil) return whistleDir; // během zvukového efektu držíme směr
     const f = detectPitch();
     if (f){
-      const l = Math.log(f);
-      pitchLog = pitchLog == null || now() - lastWhistle > 250 ? l : pitchLog*.55 + l*.45;
       lastWhistle = now();
-      stableCount++;
-      if (stableCount > 4){
-        const pf = Math.exp(pitchLog);
-        if (pf < settings.lo){ settings.lo = pf; save(); }
-        if (pf > settings.hi){ settings.hi = pf; save(); }
-      }
-      rawEl.textContent = 'Tón: ' + Math.round(f) + ' Hz';
-    } else {
-      stableCount = 0;
+      const d = classify(f);
+      if (d === candDir) candCount++; else { candDir = d; candCount = 1; }
+      if (candDir && candCount >= 3) whistleDir = candDir; // 3 snímky stejně = jistý směr
+      rawEl.textContent = 'Tón: ' + Math.round(f) + ' Hz' + (d ? ' → ' + DIR_NAME[d] : ' — žádný směr');
+    } else if (now() - lastWhistle > 160){
+      whistleDir = null; candDir = null; candCount = 0;
       if (now() - lastWhistle > 400 && analyser) rawEl.textContent = 'Ticho';
     }
-    return now() - lastWhistle < 160; // krátké výpadky ignorujeme
+    return whistleDir;
   }
+
+  // ---------- Test pískání ----------
+  let testing = false, testStable = 0, testRaf = 0, testSmooth = null;
+  async function startTest(){
+    ensureAudio();
+    $('testMsg').textContent = 'Zapínám mikrofon…';
+    await startWhistle();
+    if (!analyser){ $('testMsg').textContent = 'Mikrofon se nepodařilo zapnout. Povol ho v Safari (aA → Nastavení webové stránky).'; return; }
+    testing = true; testStable = 0; testSmooth = null;
+    $('testBtn').textContent = 'Zastavit test';
+    testTick();
+  }
+  function stopTest(){
+    if (calib) endCalib('');
+    testing = false; cancelAnimationFrame(testRaf);
+    $('testBtn').textContent = 'Spustit test pískání';
+    showChip(null);
+    $('lvlFill').style.width = '0';
+  }
+  function testTick(){
+    if (!testing) return;
+    const r = analyze();
+    if (r){
+      const pct = (v) => clamp((v + 100) / 80, 0, 1) * 100; // -100..-20 dB
+      const fill = $('lvlFill');
+      fill.style.width = pct(r.max) + '%';
+      fill.classList.toggle('hit', !!r.freq);
+      $('lvlMark').style.left = pct(threshold()) + '%';
+      const msg = $('testMsg');
+      if (r.freq){
+        const l = Math.log(r.freq);
+        testSmooth = testSmooth == null ? l : testSmooth*.6 + l*.4;
+        const f = Math.exp(testSmooth);
+        if (calib){ if (calib.first == null) calib.first = now(); calib.samples.push(r.freq); }
+        const d = calib ? null : classify(f);
+        showChip(d);
+        msg.textContent = 'Slyším tón ' + Math.round(f) + ' Hz' + (calib ? '.' : d ? ' — loď by letěla ' + DIR_NAME[d] + '.' : ' — tenhle tón nepatří žádnému směru.');
+      } else {
+        testSmooth = null;
+        showChip(null);
+        msg.textContent = !r.loud
+          ? (r.max > threshold() - 10 ? 'Skoro — zapískej hlasitěji, nebo zvyš citlivost.' : 'Ticho. Zapískej.')
+          : 'Slyším zvuk, ale není to čistý tón. Zkus pískat jednou notou.';
+      }
+    }
+    if (calib) tickCalib();
+    testRaf = requestAnimationFrame(testTick);
+  }
+  $('testBtn').addEventListener('click', () => { testing ? stopTest() : startTest(); });
+
+  // ---------- Nahrání vlastních tónů ----------
+  let calib = null;
+  const calBtn = (d) => document.querySelector('[data-cal="' + d + '"]');
+  async function startCalib(which){
+    if (calib) endCalib('');
+    if (!testing) await startTest();
+    if (!testing){ $('calStatus').textContent = 'Mikrofon se nepodařilo zapnout.'; return; }
+    calib = { which, samples:[], first:null, started:now() };
+    const btn = calBtn(which);
+    btn.classList.add('live'); btn.textContent = 'Poslouchám…';
+    $('calStatus').textContent = 'Pískej tón pro ' + DIR_NAME[which] + ' a drž ho…';
+  }
+  function endCalib(msg){
+    if (!calib) return;
+    const btn = calBtn(calib.which);
+    btn.classList.remove('live'); btn.textContent = 'Nahrát';
+    calib = null;
+    if (msg) $('calStatus').textContent = msg;
+  }
+  function tickCalib(){
+    if (calib.first == null){
+      if (now() - calib.started > 6000) endCalib('Nic jsem neslyšel. Pískej hlasitěji, nebo zvyš citlivost.');
+      return;
+    }
+    if (now() - calib.first < 1200) return;
+    const which = calib.which, s = calib.samples.slice().sort((a,b) => a-b);
+    if (s.length < 10){ endCalib('Tón byl moc krátký, zkus ho držet déle.'); return; }
+    const med = s[Math.floor(s.length/2)];
+    settings.tones[which] = med;
+    let msg = 'Tón pro ' + DIR_NAME[which] + ': ' + Math.round(med) + ' Hz.';
+    const close = DIR_ORDER.filter(d => d !== which && Math.abs(Math.log(med / settings.tones[d])) < Math.log(1.15));
+    if (close.length) msg += ' Je moc blízko tónu pro ' + close.map(d => DIR_NAME[d]).join(' a ') + ', hra by je pletla. Nahraj jeden z nich víc odlišně.';
+    else msg += ' Vyzkoušej ho v testu níže.';
+    save(); showRange(); renderIntro();
+    endCalib(msg);
+  }
+  document.querySelectorAll('[data-cal]').forEach(b => b.addEventListener('click', () => startCalib(b.dataset.cal)));
 
   // ---------- Herní smyčka ----------
   function update(dt){
@@ -440,29 +589,14 @@ input[type=range]{width:100%; accent-color:var(--accent)}
     const m = 24;
 
     if (settings.mode === 'whistle'){
-      const whistling = readWhistle();
-      const oldY = ship.y;
-      let vx;
-      if (whistling && pitchLog != null){
-        const t = clamp((pitchLog - Math.log(settings.lo)) / Math.max(Math.log(settings.hi) - Math.log(settings.lo), .2), 0, 1);
-        targetY = m + (1 - t) * (H - 2*m);
-        ship.y += (targetY - ship.y) * Math.min(1, dt * 7);
-        vx = speed * .75;
-      } else {
-        targetY = null;
-        vx = -speed * .35;
-      }
-      ship.x = clamp(ship.x + vx*dt, 18, W-18);
-      ship.y = clamp(ship.y, 18, H-18);
-      const vy = (ship.y - oldY) / Math.max(dt, .001);
-      ship.thrust = whistling;
-      ship.angle = Math.atan2(vy, whistling ? Math.abs(vx) : Math.abs(vx)*2.5) ;
-    } else {
-      const [dx,dy] = DIRS[dir];
-      ship.x = clamp(ship.x + dx*speed*dt, 18, W-18);
-      ship.y = clamp(ship.y + dy*speed*dt, 18, H-18);
-      ship.thrust = dir !== 'stop';
+      const wd = readWhistle();
+      if (wd){ if (wd !== dir) setDir(wd); }
+      else if (dir !== 'stop') dir = 'stop'; // ticho = loď stojí
     }
+    const [dx,dy] = DIRS[dir];
+    ship.x = clamp(ship.x + dx*speed*dt, 18, W-18);
+    ship.y = clamp(ship.y + dy*speed*dt, 18, H-18);
+    ship.thrust = dir !== 'stop';
     if (invuln > 0) invuln -= dt;
 
     spawnT -= dt;
@@ -512,17 +646,6 @@ input[type=range]{width:100%; accent-color:var(--accent)}
       ctx.beginPath();
       a.pts.forEach((p,i) => { const x = Math.cos(p.a)*a.r*p.m, y = Math.sin(p.a)*a.r*p.m; i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
       ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
-    }
-    // ukazatel výšky tónu
-    if (settings.mode === 'whistle'){
-      const x = W - 14, m = 24;
-      ctx.strokeStyle = 'rgba(160,156,208,.35)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(x, m); ctx.lineTo(x, H-m); ctx.stroke();
-      if (targetY != null){
-        ctx.fillStyle = '#FFB547'; ctx.beginPath(); ctx.arc(x, targetY, 7, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,181,71,.25)'; ctx.lineWidth = 1; ctx.setLineDash([4,6]);
-        ctx.beginPath(); ctx.moveTo(ship.x + 20, targetY); ctx.lineTo(x - 10, targetY); ctx.stroke(); ctx.setLineDash([]);
-      }
     }
     const blink = invuln > 0 && Math.floor(invuln*10)%2 === 0;
     if (!blink){
@@ -666,7 +789,7 @@ input[type=range]{width:100%; accent-color:var(--accent)}
         ovTitle.textContent = 'Pauza'; ovText.textContent = 'Hra je pozastavená.'; ovWords.innerHTML = ''; micNote.textContent = '';
         startBtn.textContent = 'Pokračovat'; startBtn.dataset.resume = '1'; overlay.hidden = false;
       }
-      stopVoice(); stopWhistle();
+      stopTest(); stopVoice(); stopWhistle();
       setMic('', 'Mikrofon vypnutý — klepni pro zapnutí');
     }
   });
