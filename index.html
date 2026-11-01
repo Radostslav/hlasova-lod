@@ -298,7 +298,10 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
     r.lang = 'cs-CZ';
     r.continuous = !isIOS;      // na iOS krátké úseky = stabilnější
     r.interimResults = true;    // rychlejší reakce
-    r.onstart = () => { lastEvent = performance.now(); setMic('on', 'Poslouchám — klepnutím restartuješ'); };
+    r.onstart = () => { lastEvent = performance.now(); setMic('on', 'Poslouchám — klepnutím restartuješ'); rawEl.textContent = 'Mikrofon běží (' + r.lang + '), mluv…'; };
+    r.onaudiostart = () => { rawEl.textContent = 'Zvuk přichází, mluv…'; };
+    r.onspeechstart = () => { rawEl.textContent = 'Slyším řeč…'; };
+    r.onnomatch = () => { rawEl.textContent = 'Řeč nerozpoznána'; };
     r.onresult = (e) => {
       lastEvent = performance.now();
       for (let i = e.resultIndex; i < e.results.length; i++){
@@ -318,6 +321,7 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
     };
     r.onerror = (e) => {
       lastEvent = performance.now();
+      rawEl.textContent = 'Chyba: ' + e.error + (e.message ? ' — ' + e.message : '');
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed'){
         wantListen = false;
         setMic('err', isIOS ? 'Mikrofon stojí — klepni sem (a zkontroluj, že máš zapnutou Siri)' : 'Mikrofon není povolený — klepni sem');
@@ -339,11 +343,11 @@ button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
     processed = {};
     lastEvent = performance.now();
     try { rec.start(); }
-    catch(e){ setMic('err', 'Klepni sem pro zapnutí mikrofonu'); }
+    catch(e){ setMic('err', 'Klepni sem pro zapnutí mikrofonu'); rawEl.textContent = 'Start selhal: ' + e.message; }
   }
 
   function listen(){
-    if (!SR){ setMic('err', 'Hlas tady nejde — hraj šipkami'); return; }
+    if (!SR){ setMic('err', 'Hlas tady nejde — hraj šipkami'); rawEl.textContent = 'Prohlížeč nemá rozpoznávání řeči'; return; }
     wantListen = true;
     restart();
   }
