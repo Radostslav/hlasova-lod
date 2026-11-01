@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hlasová loď">
+<meta name="theme-color" content="#14123A">
+<title>Hlasová loď</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9E7F5; --surface:#FFFFFF; --text:#1C1945; --muted:#5B5884;
+  --accent:#C9741A; --line:#CFCBE6; --ok:#2C8A5F; --warn:#B23A48;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D0C26; --surface:#1A1844; --text:#EDEBFF; --muted:#A09CD0;
+    --accent:#FFB547; --line:#2E2B66; --ok:#5FD39A; --warn:#FF7A88;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D0C26; --surface:#1A1844; --text:#EDEBFF; --muted:#A09CD0;
+  --accent:#FFB547; --line:#2E2B66; --ok:#5FD39A; --warn:#FF7A88;
+  color-scheme: dark;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{height:100%; margin:0; overflow:hidden; overscroll-behavior:none}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:"Chakra Petch", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-user-select:none; user-select:none; touch-action:manipulation;
+}
+.wrap{height:100%; max-width:900px; margin:0 auto; padding:10px 12px; display:flex; flex-direction:column; gap:10px}
+header{display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+h1{font-size:1.35rem; margin:0; font-weight:700}
+.stats{display:flex; gap:16px; color:var(--muted)}
+.stats b{color:var(--text); font-size:1.2rem; margin-left:4px}
+.stage{position:relative; flex:1; min-height:0; border-radius:14px; overflow:hidden; background:#14123A; border:1px solid var(--line)}
+canvas{display:block; width:100%; height:100%; touch-action:none}
+.heard{
+  position:absolute; left:50%; top:12px; transform:translateX(-50%);
+  font-size:clamp(1.6rem, 8vw, 3rem); font-weight:700; color:#FFB547;
+  text-shadow:0 0 18px rgba(255,181,71,.5); pointer-events:none; white-space:nowrap;
+  opacity:0; transition:opacity .25s;
+}
+.heard.show{opacity:1}
+.raw{position:absolute; left:10px; bottom:8px; right:10px; font-size:.85rem; color:#A09CD0; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.overlay{
+  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; padding:20px; text-align:center; color:#EDEBFF; background:rgba(20,18,58,.86);
+}
+.overlay h2{font-size:clamp(1.5rem,6vw,2.4rem); margin:0}
+.overlay p{margin:0; max-width:44ch; line-height:1.5; color:#C9C6F0}
+.overlay[hidden]{display:none}
+.words{display:flex; gap:8px; flex-wrap:wrap; justify-content:center}
+.words span{border:1px solid #4A4690; border-radius:999px; padding:4px 12px}
+button{
+  font:inherit; font-weight:600; cursor:pointer; border-radius:12px; border:1px solid var(--line);
+  background:var(--surface); color:var(--text); padding:10px 18px; touch-action:manipulation;
+}
+button.primary{background:#FFB547; color:#1C1945; border-color:#FFB547; font-size:1.15rem; padding:14px 30px}
+button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+.controls{display:flex; gap:12px; align-items:center; justify-content:space-between}
+.micbtn{display:flex; align-items:center; gap:10px; text-align:left; flex:1; min-width:0; padding:12px 14px; min-height:64px}
+.micbtn span:last-child{font-size:.95rem; line-height:1.3}
+.dot{flex:none; width:14px; height:14px; border-radius:50%; background:var(--muted)}
+.dot.on{background:var(--ok); box-shadow:0 0 0 5px color-mix(in srgb, var(--ok) 25%, transparent)}
+.dot.err{background:var(--warn)}
+.pad{flex:none; display:grid; grid-template-columns:repeat(3,58px); grid-template-rows:repeat(2,54px); gap:6px}
+.pad button{padding:0; font-size:1.3rem}
+.pad .u{grid-column:2; grid-row:1}
+.pad .s{grid-column:3; grid-row:1; font-size:.85rem}
+.pad .l{grid-column:1; grid-row:2}
+.pad .d{grid-column:2; grid-row:2}
+.pad .r{grid-column:3; grid-row:2}
+@media (prefers-reduced-motion: reduce){ .heard{transition:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Hlasová loď</h1>
+    <div class="stats">
+      <span>Body<b id="score">0</b></span>
+      <span>Životy<b id="lives">3</b></span>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <div class="heard" id="heard"></div>
+    <div class="raw" id="raw"></div>
+    <div class="overlay" id="overlay">
+      <h2 id="ovTitle">Řiď loď hlasem</h2>
+      <p id="ovText">Sbírej zlaté hvězdy a vyhýbej se asteroidům. Loď letí směrem, který řekneš, dokud nedáš jiný povel.</p>
+      <div class="words"><span>doleva</span><span>doprava</span><span>nahoru</span><span>dolů</span><span>stop</span></div>
+      <button class="primary" id="startBtn">Spustit hru</button>
+      <p id="micNote" style="font-size:.9rem"></p>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="micbtn" id="micBtn"><span class="dot" id="dot"></span><span id="micStatus">Mikrofon vypnutý</span></button>
+    <div class="pad" aria-label="Ovládání tlačítky">
+      <button class="u" data-dir="up" aria-label="Nahoru">▲</button>
+      <button class="s" data-dir="stop" aria-label="Stop">stop</button>
+      <button class="l" data-dir="left" aria-label="Doleva">◀</button>
+      <button class="d" data-dir="down" aria-label="Dolů">▼</button>
+      <button class="r" data-dir="right" aria-label="Doprava">▶</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('c'), ctx = canvas.getContext('2d'), stage = $('stage');
+  const heardEl = $('heard'), rawEl = $('raw'), overlay = $('overlay');
+  const ovTitle = $('ovTitle'), ovText = $('ovText'), startBtn = $('startBtn'), micNote = $('micNote');
+  const dot = $('dot'), micStatus = $('micStatus'), micBtn = $('micBtn');
+  const scoreEl = $('score'), livesEl = $('lives');
+
+  let W = 0, H = 0;
+  function resize(){
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const r = stage.getBoundingClientRect();
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    if (ship){ ship.x = clamp(ship.x, 20, W-20); ship.y = clamp(ship.y, 20, H-20); }
+  }
+  const clamp = (v,a,b) => Math.min(Math.max(v,a),b);
+
+  // ---------- Hra ----------
+  const DIRS = { left:[-1,0], right:[1,0], up:[0,-1], down:[0,1], stop:[0,0] };
+  const LABELS = { left:'Doleva', right:'Doprava', up:'Nahoru', down:'Dolů', stop:'Stop' };
+  let ship = null, dir, asteroids = [], stars = [], bgStars, score, lives, running = false, invuln = 0, elapsed = 0, spawnT = 0, last = 0;
+
+  bgStars = Array.from({length:110}, () => ({ x:Math.random(), y:Math.random(), r:Math.random()*1.4+.3, s:Math.random()*.6+.2 }));
+
+  function reset(){
+    ship = { x:W/2, y:H/2, angle:-Math.PI/2 };
+    dir = 'stop'; asteroids = []; stars = []; score = 0; lives = 3; invuln = 1.5; elapsed = 0; spawnT = 1;
+    scoreEl.textContent = 0; livesEl.textContent = 3;
+    spawnStar();
+  }
+  function spawnStar(){ stars.push({ x: 40 + Math.random()*(W-80), y: 60 + Math.random()*(H-100), t: 0 }); }
+  function spawnAsteroid(){
+    const scale = Math.min(W,H)/500;
+    const speed = (35 + Math.min(elapsed*1.0, 60) + Math.random()*20) * Math.max(scale,.7);
+    const side = Math.floor(Math.random()*4);
+    const r = (12 + Math.random()*16) * Math.max(scale,.8);
+    let x, y;
+    if (side === 0){ x = -r; y = Math.random()*H; }
+    else if (side === 1){ x = W + r; y = Math.random()*H; }
+    else if (side === 2){ x = Math.random()*W; y = -r; }
+    else { x = Math.random()*W; y = H + r; }
+    const tx = W*(.25+Math.random()*.5), ty = H*(.25+Math.random()*.5);
+    const a = Math.atan2(ty-y, tx-x);
+    const pts = Array.from({length:9}, (_,i) => ({ a: i/9*Math.PI*2, m: .75 + Math.random()*.35 }));
+    asteroids.push({ x, y, r, vx:Math.cos(a)*speed, vy:Math.sin(a)*speed, rot:0, vr:(Math.random()-.5)*1.5, pts });
+  }
+
+  let heardT;
+  function setDir(d){
+    dir = d;
+    if (d !== 'stop'){ const [dx,dy] = DIRS[d]; ship.angle = Math.atan2(dy,dx); }
+    heardEl.textContent = LABELS[d];
+    heardEl.classList.add('show');
+    clearTimeout(heardT);
+    heardT = setTimeout(() => heardEl.classList.remove('show'), 900);
+  }
+
+  function update(dt){
+    elapsed += dt;
+    const speed = Math.max(Math.min(W,H)*0.3, 110);
+    const [dx,dy] = DIRS[dir];
+    ship.x = clamp(ship.x + dx*speed*dt, 18, W-18);
+    ship.y = clamp(ship.y + dy*speed*dt, 18, H-18);
+    if (invuln > 0) invuln -= dt;
+
+    spawnT -= dt;
+    if (spawnT <= 0){ spawnAsteroid(); spawnT = Math.max(1.0, 2.8 - elapsed*0.02); }
+
+    for (const a of asteroids){ a.x += a.vx*dt; a.y += a.vy*dt; a.rot += a.vr*dt; }
+    asteroids = asteroids.filter(a => a.x > -80 && a.x < W+80 && a.y > -80 && a.y < H+80);
+
+    for (let i = stars.length-1; i >= 0; i--){
+      const s = stars[i]; s.t += dt;
+      if (Math.hypot(s.x-ship.x, s.y-ship.y) < 26){ stars.splice(i,1); score++; scoreEl.textContent = score; spawnStar(); }
+    }
+    if (invuln <= 0){
+      for (const a of asteroids){
+        if (Math.hypot(a.x-ship.x, a.y-ship.y) < a.r*.85 + 12){
+          lives--; livesEl.textContent = lives; invuln = 2; a.x = -999;
+          if (navigator.vibrate) navigator.vibrate(120);
+          if (lives <= 0){ gameOver(); return; }
+          break;
+        }
+      }
+    }
+    for (const b of bgStars){ b.y += b.s*dt*0.02; if (b.y > 1) b.y -= 1; }
+  }
+
+  function drawStar(x,y,r,rot){
+    ctx.beginPath();
+    for (let i=0;i<10;i++){ const rr = i%2 ? r*.45 : r, a = rot + i*Math.PI/5 - Math.PI/2; ctx.lineTo(x+Math.cos(a)*rr, y+Math.sin(a)*rr); }
+    ctx.closePath(); ctx.fill();
+  }
+
+  function draw(){
+    ctx.fillStyle = '#14123A'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#ffffff';
+    for (const b of bgStars){ ctx.globalAlpha = b.s; ctx.beginPath(); ctx.arc(b.x*W, b.y*H, b.r, 0, Math.PI*2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    if (!ship) return;
+    for (const s of stars){
+      const p = 1 + Math.sin(s.t*4)*.12;
+      ctx.fillStyle = 'rgba(255,214,102,.18)'; ctx.beginPath(); ctx.arc(s.x, s.y, 20*p, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#FFD666'; drawStar(s.x, s.y, 11*p, s.t*.8);
+    }
+    for (const a of asteroids){
+      ctx.save(); ctx.translate(a.x,a.y); ctx.rotate(a.rot);
+      ctx.fillStyle = '#5E5A8F'; ctx.strokeStyle = '#8E89C9'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      a.pts.forEach((p,i) => { const x = Math.cos(p.a)*a.r*p.m, y = Math.sin(p.a)*a.r*p.m; i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
+      ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+    const blink = invuln > 0 && Math.floor(invuln*10)%2 === 0;
+    if (!blink){
+      ctx.save(); ctx.translate(ship.x, ship.y); ctx.rotate(ship.angle);
+      if (dir !== 'stop'){
+        const f = 8 + Math.random()*6;
+        ctx.fillStyle = '#FF7A3D'; ctx.beginPath(); ctx.moveTo(-10,-5); ctx.lineTo(-10-f,0); ctx.lineTo(-10,5); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = '#FFB547';
+      ctx.beginPath(); ctx.moveTo(18,0); ctx.lineTo(-12,-12); ctx.lineTo(-6,0); ctx.lineTo(-12,12); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#14123A'; ctx.beginPath(); ctx.arc(4,0,3.5,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function loop(t){
+    const dt = Math.min((t - last)/1000, 0.05); last = t;
+    if (running) update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function gameOver(){
+    running = false;
+    const word = score === 1 ? 'hvězdu' : (score >= 2 && score <= 4 ? 'hvězdy' : 'hvězd');
+    ovTitle.textContent = 'Konec hry';
+    ovText.textContent = 'Nasbíral jsi ' + score + ' ' + word + '. Řekni „znovu“ nebo klepni na tlačítko.';
+    startBtn.textContent = 'Hrát znovu';
+    overlay.hidden = false;
+  }
+
+  function start(){
+    resize(); reset();
+    overlay.hidden = true; running = true;
+    listen(); // spuštěno klepnutím — iOS to vyžaduje
+  }
+
+  // ---------- Rozpoznávání řeči ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let rec = null, wantListen = false, processed = {}, lastEvent = 0, restartT = null;
+
+  function norm(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?]/g,''); }
+  function wordToCmd(w){
+    if (/^(doleva|vlevo|leva|levo|lev)$/.test(w)) return 'left';
+    if (/^(doprava|vpravo|prava|pravo)$/.test(w)) return 'right';
+    if (/^(nahoru|nahore|nahoro|hore|nahor)$/.test(w)) return 'up';
+    if (/^(dolu|dole|dolo|dolni)$/.test(w)) return 'down';
+    if (/^(stop|stuj|zastav|stat|stoj)$/.test(w)) return 'stop';
+    if (/^(znovu|start|hraj)$/.test(w)) return 'restart';
+    return null;
+  }
+
+  function setMic(state, text){
+    dot.className = 'dot' + (state === 'on' ? ' on' : state === 'err' ? ' err' : '');
+    micStatus.textContent = text;
+  }
+
+  function createRec(){
+    const r = new SR();
+    r.lang = 'cs-CZ';
+    r.continuous = !isIOS;      // na iOS krátké úseky = stabilnější
+    r.interimResults = true;    // rychlejší reakce
+    r.onstart = () => { lastEvent = performance.now(); setMic('on', 'Poslouchám — klepnutím restartuješ'); };
+    r.onresult = (e) => {
+      lastEvent = performance.now();
+      for (let i = e.resultIndex; i < e.results.length; i++){
+        const text = e.results[i][0].transcript;
+        rawEl.textContent = 'Slyším: ' + text;
+        const words = norm(text).trim().split(/\s+/).filter(Boolean);
+        let done = processed[i] || 0;
+        if (words.length < done) done = words.length; // iOS občas přepíše text
+        for (let k = done; k < words.length; k++){
+          const cmd = wordToCmd(words[k]);
+          if (!cmd) continue;
+          if (cmd === 'restart'){ if (!running) start(); }
+          else if (running) setDir(cmd);
+        }
+        processed[i] = words.length;
+      }
+    };
+    r.onerror = (e) => {
+      lastEvent = performance.now();
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+        wantListen = false;
+        setMic('err', isIOS ? 'Mikrofon stojí — klepni sem (a zkontroluj, že máš zapnutou Siri)' : 'Mikrofon není povolený — klepni sem');
+      }
+    };
+    r.onend = () => {
+      if (r !== rec) return;
+      processed = {};
+      if (wantListen){ clearTimeout(restartT); restartT = setTimeout(restart, isIOS ? 250 : 100); }
+      else if (!dot.classList.contains('err')) setMic('', 'Mikrofon vypnutý — klepni pro zapnutí');
+    };
+    return r;
+  }
+
+  function restart(){
+    if (!wantListen) return;
+    if (rec){ const old = rec; rec = null; try { old.abort(); } catch(e){} }
+    rec = createRec();               // na iOS vždy nová instance
+    processed = {};
+    lastEvent = performance.now();
+    try { rec.start(); }
+    catch(e){ setMic('err', 'Klepni sem pro zapnutí mikrofonu'); }
+  }
+
+  function listen(){
+    if (!SR){ setMic('err', 'Hlas tady nejde — hraj šipkami'); return; }
+    wantListen = true;
+    restart();
+  }
+
+  // hlídač: když se iOS zasekne (žádné události), restart
+  setInterval(() => {
+    if (wantListen && running && !document.hidden && performance.now() - lastEvent > 7000) restart();
+  }, 1000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden){
+      if (running){ running = false; ovTitle.textContent = 'Pauza'; ovText.textContent = 'Hra je pozastavená.'; startBtn.textContent = 'Pokračovat'; overlay.hidden = false; startBtn.dataset.resume = '1'; }
+      if (rec){ const old = rec; rec = null; try { old.abort(); } catch(e){} }
+      setMic('', 'Mikrofon vypnutý — klepni pro zapnutí');
+    }
+  });
+
+  if (!SR) micNote.textContent = 'Tenhle prohlížeč neumí rozpoznávat řeč. Hrát můžeš šipkami pod hrou.';
+  else if (isIOS) micNote.textContent = 'Na iPhonu musí být zapnutá Siri. Když loď přestane reagovat, klepni na mikrofon dole.';
+
+  // ---------- Ovládání ----------
+  startBtn.addEventListener('click', () => {
+    if (startBtn.dataset.resume){ delete startBtn.dataset.resume; overlay.hidden = true; running = true; listen(); return; }
+    start();
+  });
+  micBtn.addEventListener('click', listen);
+  const KEYMAP = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down', ' ':'stop' };
+  window.addEventListener('keydown', (e) => {
+    const d = KEYMAP[e.key];
+    if (d && running){ e.preventDefault(); setDir(d); }
+    else if (e.key === 'Enter' && !running) startBtn.click();
+  });
+  document.querySelectorAll('.pad button').forEach(b => {
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); if (running) setDir(b.dataset.dir); });
+  });
+  window.addEventListener('resize', resize);
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+
+  resize();
+  requestAnimationFrame((t) => { last = t; loop(t); });
+})();
+</script>
+</body>
+</html>
